@@ -293,7 +293,7 @@ export function CalendarPlanner() {
 
                   {selectedDate === dateStr && (
                     <div className="mt-4 pt-3 border-t sm:mt-3 sm:pt-2">
-                      <div className="flex gap-2">
+                      <div className="space-y-2">
                         <Input
                           ref={inputRef}
                           placeholder="할 일 입력..."
@@ -304,14 +304,17 @@ export function CalendarPlanner() {
                               addTask(dateStr)
                             }
                           }}
-                          className="text-base h-12 sm:h-10 sm:text-sm flex-1"
+                          className="text-base h-12 sm:h-10 sm:text-sm w-full"
                           autoFocus
                         />
-                        {!isMobile && (
-                          <Button size="sm" onClick={() => addTask(dateStr)} className="h-12 w-12 sm:h-10 sm:w-10 p-0">
-                            <Plus className="h-5 w-5 sm:h-4 sm:w-4" />
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => addTask(dateStr)}
+                          className="h-12 w-full sm:h-10 sm:w-auto sm:px-4"
+                        >
+                          <Plus className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
+                          추가
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -337,7 +340,7 @@ export function CalendarPlanner() {
           </CardHeader>
           <CardContent>
             <div className="mb-4">
-              <div className="flex gap-2">
+              <div className="space-y-3">
                 <Input
                   placeholder="새 할 일을 입력하세요..."
                   value={newTask}
@@ -347,14 +350,12 @@ export function CalendarPlanner() {
                       addTask(selectedDate)
                     }
                   }}
-                  className="flex-1 h-14 sm:h-12 text-base"
+                  className="w-full h-14 sm:h-12 text-base"
                 />
-                {!isMobile && (
-                  <Button onClick={() => addTask(selectedDate)} className="h-14 sm:h-12 px-4">
-                    <Plus className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
-                    추가
-                  </Button>
-                )}
+                <Button onClick={() => addTask(selectedDate)} className="h-14 sm:h-12 w-full sm:w-auto sm:px-6">
+                  <Plus className="h-6 w-6 sm:h-4 sm:w-4 mr-2" />
+                  추가
+                </Button>
               </div>
             </div>
 
