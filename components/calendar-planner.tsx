@@ -1,17 +1,20 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { ChevronLeft, ChevronRight, Plus, X, Calendar, CalendarDays } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface Task {
   id: string
-  text: string
+  title: string
+  description?: string
   date: string
 }
 
@@ -22,9 +25,11 @@ export function CalendarPlanner() {
   const isMobile = useIsMobile()
   const [viewMode, setViewMode] = useState<ViewMode>(isMobile ? "week" : "month")
   const [tasks, setTasks] = useState<Task[]>([])
-  const [newTask, setNewTask] = useState("")
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<string>("")
+  const [newTaskTitle, setNewTaskTitle] = useState("")
+  const [newTaskDescription, setNewTaskDescription] = useState("")
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
 
   useEffect(() => {
     const savedTasks = localStorage.getItem("calendar-tasks")
@@ -47,16 +52,53 @@ export function CalendarPlanner() {
     return date.toISOString().split("T")[0]
   }
 
-  const addTask = (date: string) => {
-    if (newTask.trim()) {
+  const addTask = () => {
+    if (newTaskTitle.trim()) {
       const task: Task = {
         id: Date.now().toString(),
-        text: newTask.trim(),
-        date,
+        title: newTaskTitle.trim(),
+        description: newTaskDescription.trim() || undefined,
+        date: selectedDate,
       }
       setTasks([...tasks, task])
-      setNewTask("")
+      resetDialog()
     }
+  }
+
+  const updateTask = () => {
+    if (editingTask && newTaskTitle.trim()) {
+      setTasks(
+        tasks.map((task) =>
+          task.id === editingTask.id
+            ? { ...task, title: newTaskTitle.trim(), description: newTaskDescription.trim() || undefined }
+            : task,
+        ),
+      )
+      resetDialog()
+    }
+  }
+
+  const resetDialog = () => {
+    setNewTaskTitle("")
+    setNewTaskDescription("")
+    setEditingTask(null)
+    setIsDialogOpen(false)
+  }
+
+  const openAddDialog = (dateStr: string) => {
+    setSelectedDate(dateStr)
+    setEditingTask(null)
+    setNewTaskTitle("")
+    setNewTaskDescription("")
+    setIsDialogOpen(true)
+  }
+
+  const openEditDialog = (task: Task) => {
+    setSelectedDate(task.date)
+    setEditingTask(task)
+    setNewTaskTitle(task.title)
+    setNewTaskDescription(task.description || "")
+    setIsDialogOpen(true)
   }
 
   const removeTask = (taskId: string) => {
@@ -124,17 +166,6 @@ export function CalendarPlanner() {
   const monthNames = ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
 
   const days = viewMode === "month" ? getMonthDays() : getWeekDays()
-
-  const handleDateSelect = (dateStr: string) => {
-    const newSelectedDate = selectedDate === dateStr ? null : dateStr
-    setSelectedDate(newSelectedDate)
-
-    if (newSelectedDate) {
-      setTimeout(() => {
-        inputRef.current?.focus()
-      }, 100)
-    }
-  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 p-2 sm:p-4 lg:p-6">
@@ -229,9 +260,8 @@ export function CalendarPlanner() {
                         ? "border border-border p-4 min-h-[200px]"
                         : "border-r border-b last:border-r-0 p-2 sm:p-3 min-h-[200px] sm:min-h-[180px]",
                     !isCurrentMonthDay && "text-muted-foreground bg-muted/20",
-                    selectedDate === dateStr && "bg-primary/10 border-primary",
                   )}
-                  onClick={() => handleDateSelect(dateStr)}
+                  onClick={() => openAddDialog(dateStr)}
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex flex-col items-start">
@@ -260,8 +290,17 @@ export function CalendarPlanner() {
                       <div
                         key={task.id}
                         className="bg-primary/10 text-primary px-3 py-2 sm:px-2 sm:py-1.5 rounded flex items-center justify-between group"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEditDialog(task)
+                        }}
                       >
-                        <span className="truncate flex-1 text-base sm:text-sm">{task.text}</span>
+                        <div className="truncate flex-1">
+                          <div className="truncate text-base sm:text-sm font-medium">{task.title}</div>
+                          {task.description && (
+                            <div className="truncate text-sm sm:text-xs text-muted-foreground">{task.description}</div>
+                          )}
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -290,34 +329,6 @@ export function CalendarPlanner() {
                       </div>
                     )}
                   </div>
-
-                  {selectedDate === dateStr && (
-                    <div className="mt-4 pt-3 border-t sm:mt-3 sm:pt-2">
-                      <div className="space-y-2">
-                        <Input
-                          ref={inputRef}
-                          placeholder="할 일 입력..."
-                          value={newTask}
-                          onChange={(e) => setNewTask(e.target.value)}
-                          onKeyPress={(e) => {
-                            if (e.key === "Enter") {
-                              addTask(dateStr)
-                            }
-                          }}
-                          className="text-base h-12 sm:h-10 sm:text-sm w-full"
-                          autoFocus
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => addTask(dateStr)}
-                          className="h-12 w-full sm:h-10 sm:w-auto sm:px-4"
-                        >
-                          <Plus className="h-5 w-5 sm:h-4 sm:w-4 mr-2" />
-                          추가
-                        </Button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -325,67 +336,65 @@ export function CalendarPlanner() {
         </CardContent>
       </Card>
 
-      {selectedDate && (
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg sm:text-xl">
-              {new Date(selectedDate + "T00:00:00").toLocaleDateString("ko-KR", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                weekday: "long",
-              })}{" "}
-              할 일
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4">
-              <div className="space-y-3">
-                <Input
-                  placeholder="새 할 일을 입력하세요..."
-                  value={newTask}
-                  onChange={(e) => setNewTask(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      addTask(selectedDate)
-                    }
-                  }}
-                  className="w-full h-14 sm:h-12 text-base"
-                />
-                <Button onClick={() => addTask(selectedDate)} className="h-14 sm:h-12 w-full sm:w-auto sm:px-6">
-                  <Plus className="h-6 w-6 sm:h-4 sm:w-4 mr-2" />
-                  추가
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-3 sm:space-y-2">
-              {getTasksForDate(selectedDate).map((task) => (
-                <div key={task.id} className="flex items-center justify-between p-4 sm:p-3 bg-muted rounded-lg">
-                  <span className="text-base sm:text-sm">{task.text}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeTask(task.id)}
-                    className={cn(isMobile ? "h-12 w-12" : "h-8 w-8")}
-                    onTouchEnd={(e) => {
-                      e.preventDefault()
-                      removeTask(task.id)
-                    }}
-                  >
-                    <X className="h-5 w-5 sm:h-4 sm:w-4" />
-                  </Button>
-                </div>
-              ))}
-              {getTasksForDate(selectedDate).length === 0 && (
-                <p className="text-muted-foreground text-center py-6 sm:py-4 text-base sm:text-sm">
-                  이 날에는 할 일이 없습니다.
-                </p>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingTask ? "할 일 수정" : "새 할 일 추가"}
+              {selectedDate && (
+                <span className="block text-sm font-normal text-muted-foreground mt-1">
+                  {new Date(selectedDate + "T00:00:00").toLocaleDateString("ko-KR", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    weekday: "long",
+                  })}
+                </span>
               )}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">제목</label>
+              <Input
+                placeholder="할 일 제목을 입력하세요..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    editingTask ? updateTask() : addTask()
+                  }
+                }}
+                className="h-12 text-base"
+                autoFocus
+              />
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <div>
+              <label className="text-sm font-medium mb-2 block">상세 내용 (선택사항)</label>
+              <Textarea
+                placeholder="자세한 내용을 입력하세요..."
+                value={newTaskDescription}
+                onChange={(e) => setNewTaskDescription(e.target.value)}
+                className="min-h-[100px] text-base resize-none"
+              />
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button onClick={resetDialog} variant="outline" className="flex-1 h-12 bg-transparent">
+                취소
+              </Button>
+              <Button
+                onClick={editingTask ? updateTask : addTask}
+                className="flex-1 h-12"
+                disabled={!newTaskTitle.trim()}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {editingTask ? "수정" : "추가"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
